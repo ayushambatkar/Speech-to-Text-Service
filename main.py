@@ -21,7 +21,7 @@ stt = SpeechToTextService(model_size="base", device="cpu", compute_type="int8")
 
 @app.get("/")
 def read_root():
-    return {"Flick S2T Streaming API": "Live"}
+    return {"S2T Streaming API": "Live"}
 
 
 # ---------------------------------------------------------------------------
