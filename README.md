@@ -1,4 +1,4 @@
-# Flick S2T Streaming API
+# S2T Streaming API
 
 A speech-to-text service built with [faster-whisper](https://github.com/SYSTRAN/faster-whisper) and FastAPI.
 
