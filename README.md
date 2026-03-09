@@ -118,9 +118,17 @@ A persistent WebSocket connection where the **client streams raw audio bytes in 
 
 The connection **stays open** after a `done` event. The cycle repeats — the client can immediately start sending the next utterance's audio chunks and send `"DONE"` again.
 
+#### Partial (incremental) results
+
+The server **does not wait for `"DONE"` to start transcribing**. Every time a binary chunk arrives, a transcription pass is immediately triggered on the entire accumulated audio so far. Segments are streamed back to the client as soon as faster-whisper produces them.
+
+To avoid duplicates across passes, the server tracks a `last_emitted_end` cursor and only forwards segments whose start time is beyond it.
+
+An `asyncio.Lock` ensures passes never overlap — if a transcription is already running when a new chunk arrives, that chunk is silently accumulated and picked up by the next available pass.
+
 #### When does it stop reading audio?
 
-The server keeps buffering audio chunks **until you send the text message `"DONE"`**. It does not auto-detect silence — your client is responsible for deciding when an utterance ends (e.g. using a VAD library on the frontend, a record button, or a fixed time window).
+The server keeps reading chunks indefinitely. `"DONE"` finalises the utterance: the server waits for any in-flight pass, emits any remaining segments, sends `{"type": "done"}`, then resets the buffer and cursor for the next utterance. It does not auto-detect silence — your client decides when to send `"DONE"` (e.g. stop button, VAD on the frontend, fixed timer).
 
 
 ```dart

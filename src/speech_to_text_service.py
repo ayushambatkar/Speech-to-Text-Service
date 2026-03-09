@@ -5,7 +5,7 @@ from typing import Iterator, Optional, Tuple
 import av
 import numpy as np
 from faster_whisper import WhisperModel
-from faster_whisper.transcribe import TranscriptionInfo, TranscriptionOptions
+from faster_whisper.transcribe import Segment, TranscriptionInfo, TranscriptionOptions
 
 
 class SpeechToTextService:
@@ -31,7 +31,7 @@ class SpeechToTextService:
         """
         Decode arbitrary audio bytes (wav, mp3, webm, ogg, mp4, …) into a
         mono float32 numpy array resampled to `sample_rate` Hz.
-        Uses PyAV – no external ffmpeg binary required.
+        Uses PyAV - no external ffmpeg binary required.
         """
         container = av.open(io.BytesIO(audio_bytes))
         resampler = av.audio.resampler.AudioResampler(
@@ -69,7 +69,7 @@ class SpeechToTextService:
           - a pre-decoded float32 numpy array (shape: [samples])
 
         Returns (segments_generator, info).  Iterating segments_generator is
-        CPU-bound – always do it inside a thread / executor.
+        CPU-bound - always do it inside a thread / executor.
         """
         segments, info = self.model.transcribe(
             audio,
@@ -152,11 +152,41 @@ class SpeechToTextService:
         await loop.run_in_executor(None, _run)
 
     # ------------------------------------------------------------------
+    # Synchronous helper (for run_in_executor partial transcription)
+    # ------------------------------------------------------------------
+
+    def transcribe_sync(
+        self,
+        audio: "str | np.ndarray",
+        language: Optional[str] = None,
+        task: str = "transcribe",
+        word_timestamps: bool = False,
+        beam_size: int = 5,
+        vad_filter: bool = True,
+    ) -> tuple[list[dict], object]:
+        """
+        Runs transcription fully in the calling thread and returns
+        ``(segment_dicts, info)`` — suitable for use inside run_in_executor.
+        """
+        segments_iter, info = self.model.transcribe(
+            audio,
+            language=language,
+            task=task,
+            beam_size=beam_size,
+            word_timestamps=word_timestamps,
+            vad_filter=vad_filter,
+        )
+        return (
+            [SpeechToTextService.segment_to_dict(s, word_timestamps) for s in segments_iter],
+            info,
+        )
+
+    # ------------------------------------------------------------------
     # Format helpers
     # ------------------------------------------------------------------
 
     @staticmethod
-    def segment_to_dict(segment, word_timestamps: bool = False) -> dict:
+    def segment_to_dict(segment: Segment, word_timestamps: bool = False) -> dict:
         payload = {
             "start": round(segment.start, 3),
             "end": round(segment.end, 3),
