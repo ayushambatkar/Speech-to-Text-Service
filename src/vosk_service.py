@@ -8,7 +8,7 @@ from typing import List, Tuple
 import numpy as np
 from vosk import Model, KaldiRecognizer
 
-from .speech_to_text_service import SpeechToTextService
+from .speech_to_text_service import WhisperSTTService
 from .transcribe_interface import TranscribeServiceInterface
 
 
@@ -19,7 +19,7 @@ class SimpleTranscriptionInfo:
     duration: float = 0.0
 
 
-class VoskTranscribeService(TranscribeServiceInterface):
+class VoskSTTService(TranscribeServiceInterface):
     def __init__(self, model_path: str, sample_rate: int = 16000) -> None:
         self.model = Model(model_path)
         self.sample_rate = sample_rate
@@ -35,7 +35,7 @@ class VoskTranscribeService(TranscribeServiceInterface):
     def transcribe(self, audio, language: str | None = None, task: str = "transcribe", word_timestamps: bool = False, beam_size: int = 5, vad_filter: bool = True) -> Tuple[List[dict], SimpleTranscriptionInfo]:
         # Accept pre-decoded numpy arrays or bytes-like; decode if needed
         if isinstance(audio, (bytes, bytearray)):
-            audio_arr = SpeechToTextService.decode_audio(bytes(audio), sample_rate=self.sample_rate)
+            audio_arr = WhisperSTTService.decode_audio(bytes(audio), sample_rate=self.sample_rate)
         else:
             audio_arr = audio
 

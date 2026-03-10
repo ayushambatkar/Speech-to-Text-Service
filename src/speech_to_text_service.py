@@ -9,7 +9,7 @@ from faster_whisper.transcribe import Segment, TranscriptionInfo, TranscriptionO
 from .transcribe_interface import TranscribeServiceInterface
 
 
-class SpeechToTextService(TranscribeServiceInterface):
+class WhisperSTTService(TranscribeServiceInterface):
     """
     Wraps faster-whisper for synchronous and async streaming transcription.
     Intended to be instantiated once (module-level) and reused across requests.
@@ -178,7 +178,7 @@ class SpeechToTextService(TranscribeServiceInterface):
             vad_filter=vad_filter,
         )
         return (
-            [SpeechToTextService.segment_to_dict(s, word_timestamps) for s in segments_iter],
+            [WhisperSTTService.segment_to_dict(s, word_timestamps) for s in segments_iter],
             info,
         )
 

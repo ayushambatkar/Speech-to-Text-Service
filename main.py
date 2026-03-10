@@ -10,8 +10,8 @@ import numpy as np
 from fastapi import FastAPI, File, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
-from src.speech_to_text_service import SpeechToTextService
-from src.vosk_service import VoskTranscribeService
+from src.speech_to_text_service import WhisperSTTService
+from src.vosk_service import VoskSTTService
 
 app = FastAPI(title="Flick S2T Streaming API", version="1.0.0")
 
@@ -24,10 +24,10 @@ class TranscribingService(str, Enum):
 
 # Create backend instances at startup. Vosk requires a local model path;
 # set via VOSK_MODEL_PATH env var or defaults to ./model
-whisper_service = SpeechToTextService(model_size="base", device="cpu", compute_type="int8")
+whisper_service = WhisperSTTService(model_size="base", device="cpu", compute_type="int8")
 vosk_model_path = os.getenv("VOSK_MODEL_PATH", "./model")
 VOSK_MODEL_PATH="./models/vosk-model-small-en-in-0.4"
-vosk_service = VoskTranscribeService(VOSK_MODEL_PATH, sample_rate=16000)
+vosk_service = VoskSTTService(VOSK_MODEL_PATH, sample_rate=16000)
 
 SERVICES = {"whisper": whisper_service, "vosk": vosk_service}
 
@@ -65,7 +65,7 @@ async def transcribe(
     audio_bytes = await file.read()
     loop = asyncio.get_running_loop()
 
-    audio = await loop.run_in_executor(None, SpeechToTextService.decode_audio, audio_bytes)
+    audio = await loop.run_in_executor(None, WhisperSTTService.decode_audio, audio_bytes)
     service_obj = SERVICES[service.value]
 
     segments_iter, info = await loop.run_in_executor(
@@ -77,7 +77,7 @@ async def transcribe(
         if isinstance(seg, dict):
             segments.append(seg)
         else:
-            segments.append(SpeechToTextService.segment_to_dict(seg, word_timestamps))
+            segments.append(WhisperSTTService.segment_to_dict(seg, word_timestamps))
 
     return {
         "language": info.language,
@@ -114,7 +114,7 @@ async def transcribe_stream(
     loop = asyncio.get_running_loop()
 
     audio = await loop.run_in_executor(
-        None, SpeechToTextService.decode_audio, audio_bytes
+        None, WhisperSTTService.decode_audio, audio_bytes
     )
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -228,7 +228,7 @@ async def websocket_transcribe(websocket: WebSocket, service: TranscribingServic
         # Normalize segments (Segment objects -> dicts) and emit them.
         for seg in segments:
             if not isinstance(seg, dict):
-                seg = SpeechToTextService.segment_to_dict(seg, word_timestamps=False)
+                seg = WhisperSTTService.segment_to_dict(seg, word_timestamps=False)
 
             try:
                 await websocket.send_json({"type": "segment", **seg})
