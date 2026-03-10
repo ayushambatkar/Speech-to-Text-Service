@@ -9,9 +9,32 @@ A speech-to-text service built with [faster-whisper](https://github.com/SYSTRAN/
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -r requirement.txt
+pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+
+### Vosk & Whisper (quick setup)
+
+- Vosk (recommended for low-latency / realtime):
+
+  ```bash
+  pip install vosk
+  # Download a Vosk model (see https://alphacephei.com/vosk/models)
+  # e.g. unpack to ./models/vosk-model-small-en-in-0.4
+  export VOSK_MODEL_PATH=./models/vosk-model-small-en-in-0.4
+  ```
+
+- Whisper / faster-whisper (file-based or higher-accuracy):
+
+  ```bash
+  pip install faster-whisper
+  # Optionally choose model size when instantiating the service (main.py)
+  # e.g. model_size="small" or "medium" for better accuracy.
+  ```
+
+- Note: Whisper cannot handle real time audio transcription like vosk so the output is very unstable
+
+Place models where the server can access them and set `VOSK_MODEL_PATH` for Vosk before starting the app.
 
 API is now live at `http://localhost:8000`.  
 Interactive docs: `http://localhost:8000/docs`
@@ -213,21 +236,3 @@ When `word_timestamps=true`, each segment includes a `words` array:
 | Live microphone transcription | `WS /ws/transcribe` |
 
 ---
-
-## Model Configuration
-
-The model is loaded once at startup in [main.py](main.py):
-
-```python
-stt = SpeechToTextService(model_size="base", device="cpu", compute_type="int8")
-```
-
-| `model_size` | Speed | Accuracy |
-|---|---|---|
-| `tiny` | fastest | lowest |
-| `base` | fast | decent |
-| `small` | moderate | good |
-| `medium` | slow | very good |
-| `large-v3` | slowest | best |
-
-For GPU: set `device="cuda"` and `compute_type="float16"`.
