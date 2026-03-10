@@ -1,14 +1,15 @@
 import io
 import asyncio
-from typing import Iterator, Optional, Tuple
+from typing import AsyncIterator, Iterator, Optional, Tuple
 
 import av
 import numpy as np
 from faster_whisper import WhisperModel
 from faster_whisper.transcribe import Segment, TranscriptionInfo, TranscriptionOptions
+from .transcribe_interface import TranscribeServiceInterface
 
 
-class SpeechToTextService:
+class SpeechToTextService(TranscribeServiceInterface):
     """
     Wraps faster-whisper for synchronous and async streaming transcription.
     Intended to be instantiated once (module-level) and reused across requests.
@@ -179,6 +180,28 @@ class SpeechToTextService:
         return (
             [SpeechToTextService.segment_to_dict(s, word_timestamps) for s in segments_iter],
             info,
+        )
+
+    def transcribe_partial(
+        self,
+        audio: "str | np.ndarray",
+        language: Optional[str] = None,
+        word_timestamps: bool = False,
+        beam_size: int = 2,
+        vad_filter: bool = False,
+    ) -> tuple[list[dict], object]:
+        """Run a low-latency partial transcription pass.
+
+        This wraps `transcribe_sync` but exposes a clearer API for streaming
+        partials (returns list[dict], info).
+        """
+        return self.transcribe_sync(
+            audio,
+            language=language,
+            task="transcribe",
+            word_timestamps=word_timestamps,
+            beam_size=beam_size,
+            vad_filter=vad_filter,
         )
 
     # ------------------------------------------------------------------
